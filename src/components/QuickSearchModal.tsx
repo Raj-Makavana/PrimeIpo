@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { IpoData } from '@/lib/api-fetcher';
+import { CompanyLogo } from './CompanyLogo';
 import { Search, X, Flame, CheckSquare, LayoutGrid, Calculator, Calendar, GitCompare, ChevronRight } from 'lucide-react';
 
 interface Props {
@@ -14,6 +15,7 @@ export const QuickSearchModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [ipos, setIpos] = useState<IpoData[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -61,14 +63,14 @@ export const QuickSearchModal: React.FC<Props> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-      <div className="glass-card rounded-2xl w-full max-w-xl border border-slate-700 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/75 backdrop-blur-md animate-fade-in" onClick={onClose}>
+      <div className="glass-card rounded-2xl w-full max-w-xl border border-slate-700 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         {/* Search input bar */}
         <div className="flex items-center px-4 py-3 border-b border-slate-800 bg-slate-900/90 gap-3">
           <Search className="w-5 h-5 text-indigo-400 shrink-0" />
           <input
+            ref={inputRef}
             type="text"
-            autoFocus
             placeholder="Search IPOs, calculators, allotment, sectors... (Esc to close)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -97,9 +99,12 @@ export const QuickSearchModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-800/80 transition-colors text-left group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-lg bg-indigo-950 border border-indigo-700 flex items-center justify-center font-bold text-xs text-indigo-300">
-                      {ipo.symbol.substring(0, 2)}
-                    </div>
+                    <CompanyLogo
+                      symbol={ipo.symbol}
+                      name={ipo.companyName}
+                      logoUrl={ipo.logoUrl}
+                      size="sm"
+                    />
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-white group-hover:text-indigo-300">{ipo.companyName}</span>

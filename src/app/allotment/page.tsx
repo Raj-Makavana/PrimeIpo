@@ -8,8 +8,10 @@ import { formatDate } from '@/components/IpoCard';
 import { CheckSquare, Plus, Trash2, ShieldCheck, Zap, ExternalLink, AlertCircle, RefreshCw, Lock } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
+import { AuthGateCard } from '@/components/AuthGateCard';
+
 export default function AllotmentPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const userId = user?.uid || 'guest_user';
   const [ipos, setIpos] = useState<IpoData[]>([]);
   const [pans, setPans] = useState<any[]>([]);
@@ -27,6 +29,7 @@ export default function AllotmentPage() {
   const [results, setResults] = useState<any[]>([]);
 
   const loadData = async () => {
+    if (!user) return;
     setLoading(true);
     try {
       const [ipoRes, panRes] = await Promise.all([fetch('/api/ipos'), fetch(`/api/pans?userId=${userId}`)]);
@@ -51,7 +54,20 @@ export default function AllotmentPage() {
   useEffect(() => {
     loadData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, user]);
+
+  if (!user && !authLoading) {
+    return (
+      <div className="max-w-4xl mx-auto py-8">
+        <AuthGateCard
+          title="Sign In to Access Multi-PAN Allotment Checker"
+          description="Save family PAN cards securely with AES-256 encryption and check allotment status in 1 click across Link Intime, KFintech, and Bigshare."
+          badge="Investor Exclusive"
+          feature="Allotment Checker"
+        />
+      </div>
+    );
+  }
 
   const handleAddPan = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { AuthProvider } from '@/lib/auth-context';
+import { MarketDisclaimerModal } from '@/components/MarketDisclaimerModal';
 import { ShieldCheck, Info } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -18,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen flex flex-col bg-[#0b0f19] text-slate-100 antialiased selection:bg-indigo-600 selection:text-white pb-16 md:pb-0">
         <AuthProvider>
           <Navbar />
+          <MarketDisclaimerModal />
 
           <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">{children}</main>
 
@@ -45,8 +48,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </p>
               </div>
 
-              <div className="text-center text-xs text-slate-400 pt-2">
-                © {new Date().getFullYear()} PrimeIpo. Built for everyday retail IPO investors in India.
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 pt-2">
+                <span>© {new Date().getFullYear()} PrimeIpo. Built for everyday retail IPO investors in India.</span>
+                <Link
+                  href="/terms"
+                  className="text-indigo-400 hover:text-indigo-300 underline font-medium"
+                >
+                  Terms &amp; Conditions (Educational Disclaimer)
+                </Link>
               </div>
             </div>
           </footer>

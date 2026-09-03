@@ -7,8 +7,11 @@ import { GmpBadge } from '@/components/GmpBadge';
 import { SubscriptionBadge } from '@/components/SubscriptionBadge';
 import { RegistrarBadge } from '@/components/RegistrarBadge';
 import { GitCompare, Plus, X, Building2, Calendar, Award, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
+import { AuthGateCard } from '@/components/AuthGateCard';
 
 export default function ComparePage() {
+  const { user, loading: authLoading } = useAuth();
   const [ipos, setIpos] = useState<IpoData[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +48,19 @@ export default function ComparePage() {
   };
 
   const selectedIpos = selectedIds.map((id) => ipos.find((i) => i.id === id)).filter(Boolean) as IpoData[];
+
+  if (!user && !authLoading) {
+    return (
+      <div className="max-w-4xl mx-auto py-8">
+        <AuthGateCard
+          title="Sign In to Compare Indian IPOs Side-by-Side"
+          description="Unlock multi-IPO comparative analytics: compare price valuations, live GMP returns, subscription demand multiples, and lot sizes across up to 3 IPOs."
+          badge="Investor Tool"
+          feature="IPO Comparison Tool"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">

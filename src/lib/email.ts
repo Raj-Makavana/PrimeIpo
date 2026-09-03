@@ -1,7 +1,9 @@
 /**
  * PrimeIPO Email Dispatch Service
- * Handles transactional alert notifications (New IPOs, Allotment Dates, GMP Surges)
+ * Uses Gmail SMTP via Nodemailer — works for any email address (no domain needed)
  */
+
+import nodemailer from 'nodemailer';
 
 interface SendEmailParams {
   to: string;
@@ -9,19 +11,58 @@ interface SendEmailParams {
   html: string;
 }
 
-export async function sendEmailAlert({ to, subject, html }: SendEmailParams): Promise<{ success: boolean; message: string; provider?: string }> {
+// Create Gmail SMTP transporter using App Password
+function createTransporter() {
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
+
+  if (!gmailUser || !gmailAppPassword) {
+    return null;
+  }
+
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: gmailUser,
+      pass: gmailAppPassword, // 16-char App Password (no spaces)
+    },
+  });
+}
+
+export async function sendEmailAlert({
+  to,
+  subject,
+  html,
+}: SendEmailParams): Promise<{ success: boolean; message: string; provider?: string }> {
   if (!to || !to.includes('@')) {
     return { success: false, message: 'Invalid recipient email address' };
   }
 
-  // 1. Resend Provider Integration
+  // 1. Try Gmail SMTP first (works for ALL email addresses)
+  const transporter = createTransporter();
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: `"PrimeIPO" <${process.env.GMAIL_USER}>`,
+        to,
+        subject,
+        html,
+      });
+      console.log(`[PrimeIPO] Email sent via Gmail SMTP to ${to}`);
+      return { success: true, message: `Email sent to ${to}`, provider: 'gmail' };
+    } catch (err: any) {
+      console.error('[PrimeIPO] Gmail SMTP error:', err.message || err);
+    }
+  }
+
+  // 2. Fallback: Resend API (only works for account owner if no domain)
   const resendApiKey = process.env.RESEND_API_KEY;
   if (resendApiKey) {
     try {
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
+          Authorization: `Bearer ${resendApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -31,29 +72,26 @@ export async function sendEmailAlert({ to, subject, html }: SendEmailParams): Pr
           html,
         }),
       });
-
       const data = await res.json();
       if (res.ok) {
-        return { success: true, message: `Email dispatched successfully via Resend to ${to}`, provider: 'resend' };
-      } else {
-        console.error('Resend API error:', data);
+        return { success: true, message: `Email sent to ${to}`, provider: 'resend' };
       }
+      console.error('[PrimeIPO] Resend API error:', data);
     } catch (err: any) {
-      console.error('Failed to send email via Resend:', err);
+      console.error('[PrimeIPO] Resend error:', err.message || err);
     }
   }
 
-  // 2. Fallback: Log payload for development / audit
+  // 3. Dev fallback — log to console
   console.log(`\n================== [PRIMEIPO EMAIL ALERT] ==================`);
   console.log(`To: ${to}`);
   console.log(`Subject: ${subject}`);
   console.log(`Timestamp: ${new Date().toISOString()}`);
-  console.log(`Body HTML Length: ${html.length} chars`);
   console.log(`============================================================\n`);
 
   return {
-    success: true,
-    message: `Alert triggered and recorded for ${to}. To deliver directly to inboxes, add RESEND_API_KEY or SMTP credentials to .env.local.`,
-    provider: 'simulated',
+    success: false,
+    message: 'No email provider configured. Add GMAIL_USER and GMAIL_APP_PASSWORD to .env.local',
+    provider: 'none',
   };
 }

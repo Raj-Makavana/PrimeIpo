@@ -4,13 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { IpoData } from '@/lib/api-fetcher';
 import { IpoCard } from '@/components/IpoCard';
 import { SkeletonCard } from '@/components/SkeletonCard';
-import { Search, Flame, Calendar, CheckCircle2, TrendingUp, Filter, RefreshCw, Zap } from 'lucide-react';
+import { IpoOverviewTable } from '@/components/IpoOverviewTable';
+import { Search, Flame, Calendar, CheckCircle2, TrendingUp, Filter, RefreshCw, Zap, Table, LayoutGrid } from 'lucide-react';
 
 export default function HomePage() {
   const [ipos, setIpos] = useState<IpoData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'mainboard' | 'sme'>('all');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
 
   const fetchIpos = async () => {
     setLoading(true);
@@ -96,6 +98,34 @@ export default function HomePage() {
                 </button>
               ))}
             </div>
+
+            {/* View Mode Switcher */}
+            <div className="flex items-center bg-slate-900/90 p-1 rounded-2xl border border-slate-700/80 shrink-0">
+              <button
+                onClick={() => setViewMode('table')}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                  viewMode === 'table'
+                    ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Comprehensive Table Format"
+              >
+                <Table className="w-3.5 h-3.5" />
+                <span>Overview Table</span>
+              </button>
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                  viewMode === 'cards'
+                    ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Category Cards View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Cards View</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -127,7 +157,13 @@ export default function HomePage() {
             <SkeletonCard key={n} />
           ))}
         </div>
+      ) : viewMode === 'table' ? (
+        /* ── TABLE OVERVIEW SECTION ──────────────────────── */
+        <section className="space-y-6">
+          <IpoOverviewTable ipos={ipos} />
+        </section>
       ) : (
+        /* ── CARDS GRID VIEW ─────────────────────────────── */
         <div className="space-y-12">
           {/* Section 1: Open Now */}
           {openIpos.length > 0 && (

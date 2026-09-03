@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Mail, CheckCircle2, Zap, AlertCircle, Info, Clock, TrendingUp, ListPlus, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { AuthGateCard } from '@/components/AuthGateCard';
 
 const ALERT_TYPES = [
   {
@@ -48,7 +49,7 @@ const ALERT_TYPES = [
 ];
 
 export default function AlertsPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const userId = user?.uid || 'guest_user';
 
   const [prefs, setPrefs] = useState<Record<string, boolean>>({
@@ -66,6 +67,7 @@ export default function AlertsPage() {
 
   useEffect(() => {
     async function loadAlerts() {
+      if (!user) return;
       try {
         setLoading(true);
         const res = await fetch(`/api/alerts?userId=${userId}`);
@@ -91,7 +93,20 @@ export default function AlertsPage() {
     }
     loadAlerts();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, user?.email]);
+  }, [userId, user]);
+
+  if (!user && !authLoading) {
+    return (
+      <div className="max-w-4xl mx-auto py-8">
+        <AuthGateCard
+          title="Sign In to Manage Real-Time IPO Email Alerts"
+          description="Configure custom email notifications for New IPO SEBI filings, Allotment Day mornings, and live GMP surges (>25% premium)."
+          badge="Investor Notifications"
+          feature="IPO Email Alerts"
+        />
+      </div>
+    );
+  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

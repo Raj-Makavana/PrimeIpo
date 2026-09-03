@@ -224,7 +224,7 @@ export const AiAnalysisCard: React.FC<AiAnalysisCardProps> = ({ ipoId, initialDa
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
           <span>Graph execution: evaluateValuation → analyzeSentiment → synthesizeVerdict</span>
         </div>
-        <span>Grounded on Chittorgarh & InvestorGain data</span>
+        <span>Grounded on Multi-Factor Market Indicators</span>
       </div>
     </div>
   );

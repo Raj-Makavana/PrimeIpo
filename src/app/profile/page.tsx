@@ -1,16 +1,50 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { AuthModal } from '@/components/AuthModal';
 import {
   User, Mail, Phone, LogOut, Shield, Bell, CheckSquare,
-  ChevronRight, Flame, Star, TrendingUp, Award
+  ChevronRight, Flame, Star, TrendingUp, Award,
+  Trash2, AlertTriangle, RefreshCw
 } from 'lucide-react';
 
 export default function ProfilePage() {
-  const { user, logout, loading } = useAuth();
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const router = useRouter();
+  const { user, logout, loading, openAuthModal } = useAuth();
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    setDeleting(true);
+    setDeleteError('');
+
+    try {
+      const res = await fetch('/api/auth/account/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.uid || user.id,
+          email: user.email,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete account.');
+      }
+
+      await logout();
+      setIsDeleteModalOpen(false);
+      router.push('/');
+    } catch (err: any) {
+      setDeleteError(err.message || 'Error deleting account. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -24,49 +58,51 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <>
-        <div className="max-w-md mx-auto py-16 text-center space-y-6 animate-fade-in">
-          {/* Not logged in illustration */}
-          <div className="w-20 h-20 rounded-3xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center mx-auto">
-            <User className="w-10 h-10 text-indigo-400" />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-black text-white">Sign In to PrimeIpo</h1>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              Sign in to save your family PANs, track allotment results, and get instant IPO alerts.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <button
-              onClick={() => setIsAuthOpen(true)}
-              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/25 transition-all hover:scale-[1.02]"
-            >
-              Sign In / Create Account
-            </button>
-            <p className="text-xs text-slate-500">Google OAuth or Phone OTP — takes 10 seconds</p>
-          </div>
-
-          {/* Feature highlights */}
-          <div className="grid grid-cols-1 gap-3 pt-4 text-left">
-            {[
-              { icon: CheckSquare, color: 'text-emerald-400', bg: 'bg-emerald-950/60 border-emerald-800', title: 'Multi-PAN Allotment', desc: 'Check all family PANs in one click' },
-              { icon: Bell, color: 'text-indigo-400', bg: 'bg-indigo-950/60 border-indigo-800', title: 'Instant IPO Alerts', desc: 'GMP surge & allotment day notifications' },
-              { icon: Shield, color: 'text-amber-400', bg: 'bg-amber-950/40 border-amber-800/60', title: 'AES-256 PAN Encryption', desc: 'Your PAN numbers are always encrypted' },
-            ].map(({ icon: Icon, color, bg, title, desc }) => (
-              <div key={title} className={`flex items-center gap-3 p-4 rounded-xl border ${bg}`}>
-                <Icon className={`w-5 h-5 shrink-0 ${color}`} />
-                <div>
-                  <span className="text-sm font-semibold text-white block">{title}</span>
-                  <span className="text-xs text-slate-400">{desc}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="max-w-md mx-auto py-16 text-center space-y-6 animate-fade-in">
+        {/* Not logged in illustration */}
+        <div className="w-20 h-20 rounded-3xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center mx-auto">
+          <User className="w-10 h-10 text-indigo-400" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-black text-white">Sign In to PrimeIpo</h1>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            Sign in to save your family PANs, track allotment results, and get instant IPO alerts.
+          </p>
         </div>
 
-        <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
-      </>
+        <div className="space-y-3">
+          <button
+            onClick={() => openAuthModal('signin')}
+            className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/25 transition-all hover:scale-[1.02]"
+          >
+            Sign In to PrimeIPO
+          </button>
+          <button
+            onClick={() => openAuthModal('signup')}
+            className="w-full py-3.5 px-6 rounded-2xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 font-bold text-sm transition-all"
+          >
+            Create Free Account
+          </button>
+          <p className="text-xs text-slate-500">Google OAuth or Email OTP — takes 10 seconds</p>
+        </div>
+
+        {/* Feature highlights */}
+        <div className="grid grid-cols-1 gap-3 pt-4 text-left">
+          {[
+            { icon: CheckSquare, color: 'text-emerald-400', bg: 'bg-emerald-950/60 border-emerald-800', title: 'Multi-PAN Allotment', desc: 'Check all family PANs in one click' },
+            { icon: Bell, color: 'text-indigo-400', bg: 'bg-indigo-950/60 border-indigo-800', title: 'Instant IPO Alerts', desc: 'GMP surge & allotment day notifications' },
+            { icon: Shield, color: 'text-amber-400', bg: 'bg-amber-950/40 border-amber-800/60', title: 'AES-256 PAN Encryption', desc: 'Your PAN numbers are always encrypted' },
+          ].map(({ icon: Icon, color, bg, title, desc }) => (
+            <div key={title} className={`flex items-center gap-3 p-4 rounded-xl border ${bg}`}>
+              <Icon className={`w-5 h-5 shrink-0 ${color}`} />
+              <div>
+                <span className="text-sm font-semibold text-white block">{title}</span>
+                <span className="text-xs text-slate-400">{desc}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     );
   }
 
@@ -177,14 +213,88 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Sign Out */}
-      <button
-        onClick={logout}
-        className="w-full py-3.5 px-4 rounded-2xl bg-slate-900 border border-slate-700 hover:border-rose-500/50 hover:bg-rose-950/20 text-slate-300 hover:text-rose-400 font-semibold text-sm transition-all flex items-center justify-center gap-2"
-      >
-        <LogOut className="w-4 h-4" />
-        Sign Out of PrimeIpo
-      </button>
+      {/* Account Actions: Sign Out & Danger Zone */}
+      <div className="space-y-3">
+        <button
+          onClick={logout}
+          className="w-full py-3.5 px-4 rounded-2xl bg-slate-900 border border-slate-700 hover:border-slate-600 hover:bg-slate-800 text-slate-200 font-semibold text-sm transition-all flex items-center justify-center gap-2 shadow-sm"
+        >
+          <LogOut className="w-4 h-4 text-slate-400" />
+          Sign Out of PrimeIPO
+        </button>
+
+        {/* Danger Zone */}
+        <div className="p-4 rounded-2xl border border-rose-900/40 bg-rose-950/10 space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-rose-400">Danger Zone</p>
+              <p className="text-[11px] text-slate-400">
+                Permanently delete your PrimeIPO account, saved PAN cards, and alert settings.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="py-1.5 px-3 rounded-xl border border-rose-800/80 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete Account
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Delete Account Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="glass-card rounded-3xl w-full max-w-sm p-6 relative border border-rose-900/60 bg-slate-950 shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-rose-950/80 border border-rose-800 flex items-center justify-center mx-auto text-rose-400 shadow-inner">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold text-white">Delete Your Account?</h3>
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                This action is <strong className="text-rose-400">permanent and irreversible</strong>. All your saved family PANs, allotment checks, and alert preferences will be erased immediately.
+              </p>
+            </div>
+
+            {deleteError && (
+              <div className="p-2.5 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-xs text-left">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setDeleteError('');
+                }}
+                className="w-1/2 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={handleDeleteAccount}
+                className="w-1/2 py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all shadow-md shadow-rose-600/30 disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {deleting ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Yes, Delete</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

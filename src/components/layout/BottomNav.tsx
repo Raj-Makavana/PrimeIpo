@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context';
 
 export const BottomNav: React.FC = () => {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, openAuthModal } = useAuth();
 
   const tabs = [
     { name: 'Home', href: '/', icon: Flame },
@@ -24,6 +24,22 @@ export const BottomNav: React.FC = () => {
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = pathname === tab.href;
+
+          // Profile tab: if not logged in, open Sign In popup instead of navigating
+          if (tab.name === 'Profile' && !user) {
+            return (
+              <button
+                key={tab.href}
+                onClick={() => openAuthModal('signin')}
+                className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all ${
+                  isActive ? 'text-indigo-400 font-semibold' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Icon className={`w-5 h-5 ${isActive ? 'text-indigo-400 scale-110' : 'text-slate-400'}`} />
+                <span className="text-[10px]">{tab.name}</span>
+              </button>
+            );
+          }
 
           // Profile tab: show user avatar if logged in
           if (tab.name === 'Profile' && user?.photoURL) {

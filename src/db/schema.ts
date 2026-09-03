@@ -56,6 +56,7 @@ export const users = pgTable('users', {
   name: text('name'),
   phone: text('phone'),
   phoneVerified: boolean('phone_verified').default(false),
+  passwordHash: text('password_hash'),
   image: text('image'),
   createdAt: timestamp('created_at').defaultNow(),
 });

@@ -15,15 +15,18 @@ import {
   GitCompare,
   Calendar,
   Search,
+  CreditCard,
 } from 'lucide-react';
 import { AuthModal } from '../AuthModal';
 import { QuickSearchModal } from '../QuickSearchModal';
+import { PanModal } from '../PanModal';
 import { useAuth } from '@/lib/auth-context';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isPanOpen, setIsPanOpen] = useState(false);
   const { user, logout } = useAuth();
 
   useEffect(() => {
@@ -128,6 +131,15 @@ export const Navbar: React.FC = () => {
 
             {user ? (
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsPanOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-white hover:border-indigo-500/50 transition-all text-xs font-semibold"
+                  title="Manage Saved PAN Cards"
+                >
+                  <CreditCard className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="hidden sm:inline">Saved PANs</span>
+                </button>
+
                 <Link
                   href="/profile"
                   className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-indigo-500/50 transition-all group"
@@ -171,6 +183,7 @@ export const Navbar: React.FC = () => {
 
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
       <QuickSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      <PanModal isOpen={isPanOpen} onClose={() => setIsPanOpen(false)} />
     </>
   );
 };
