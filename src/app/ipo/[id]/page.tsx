@@ -30,10 +30,15 @@ import {
   CheckCircle2,
   XCircle,
   BadgeCheck,
+  Copy,
+  Check,
+  Clock,
+  RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { AiAnalysisCard } from '@/components/AiAnalysisCard';
 import { AuthGateCard } from '@/components/AuthGateCard';
+import { getRegistrarPortalInfo, getAllotmentLifecycle } from '@/lib/registrars';
 
 export default function IpoDetailPage() {
   const params = useParams();
@@ -609,231 +614,284 @@ export default function IpoDetailPage() {
       )}
 
       {/* ── TAB 4: ALLOTMENT STATUS CHECKER ──────────────────────────────── */}
-      {activeTab === 'allotment' && (
-        <div className="glass-card rounded-2xl p-6 sm:p-8 border border-slate-800 space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-              <CheckSquare className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white">Check Allotment Status</h3>
-              <p className="text-xs text-slate-400">
-                Official registrar: <span className="text-slate-200 font-semibold">{ipo.registrar}</span>
-              </p>
-            </div>
-          </div>
+      {activeTab === 'allotment' && (() => {
+        const regInfo = getRegistrarPortalInfo(ipo.registrar);
+        const life = getAllotmentLifecycle(ipo.allotmentDate);
 
-          <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex items-start gap-2.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-            <span>
-              <strong>Registrar Routing Policy:</strong> Routed directly through official registrar servers.{' '}
-              {ipo.registrar.toLowerCase().includes('bigshare')
-                ? 'Bigshare IPOs are checked automatically in one click.'
-                : `${ipo.registrar} requires a captcha — we will open the registrar page pre-filled with your PAN.`}
-            </span>
-          </div>
-
-          <form onSubmit={handleCheckAllotment} className="space-y-4 max-w-lg">
-            {pans.length > 0 && (
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">Select Saved PAN</label>
-                <select
-                  value={selectedPanId}
-                  onChange={(e) => {
-                    setSelectedPanId(e.target.value);
-                    setCustomPan('');
-                  }}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-indigo-500"
-                >
-                  {pans.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.label} (•••• {p.panMasked?.slice(-4) || 'PAN'})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                {pans.length > 0 ? 'Or Enter Different PAN' : 'Enter PAN Number'}
-              </label>
-              <input
-                type="text"
-                maxLength={10}
-                value={customPan}
-                onChange={(e) => {
-                  setCustomPan(e.target.value.toUpperCase());
-                  setSelectedPanId('');
-                }}
-                placeholder="ABCDE1234F"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-sm uppercase focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={checkLoading || (!selectedPanId && customPan.length !== 10)}
-              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50"
-            >
-              {checkLoading ? 'Querying Registrar...' : 'Check Allotment Status Now'}
-            </button>
-          </form>
-
-          {checkResult && (
-            <div className="flex items-center justify-between p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-xs">
-              <div>
-                <span className="text-slate-400 block font-medium">Last Checked Result:</span>
-                <span className={`font-bold mt-0.5 block ${
-                  checkResult.success && checkResult.data?.status === 'allotted'
-                    ? 'text-emerald-400'
-                    : checkResult.success
-                    ? 'text-slate-300'
-                    : 'text-rose-400'
-                }`}>
-                  {checkResult.data?.status === 'allotted'
-                    ? `🎉 ALLOTTED: ${checkResult.data.shares} Shares`
-                    : checkResult.data?.status === 'not_allotted'
-                    ? '❌ Not Allotted'
-                    : checkResult.message || checkResult.error || 'Status Ready'}
-                </span>
-              </div>
-              <button
-                onClick={() => setShowResultModal(true)}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 font-semibold text-xs transition-colors"
-              >
-                View Full Details
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── ALLOTMENT RESULT POPUP MODAL ──────────────────────── */}
-      {showResultModal && checkResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-black/75 backdrop-blur-sm animate-fade-in"
-            onClick={() => setShowResultModal(false)}
-          />
-          <div
-            className="relative z-10 w-full max-w-md bg-slate-950 border border-slate-700/80 rounded-3xl shadow-2xl shadow-black/80 animate-slide-up overflow-hidden p-6 space-y-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                  <CheckSquare className="w-4 h-4" />
+        return (
+          <div className="glass-card rounded-2xl p-6 sm:p-8 border border-slate-800 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                  <CheckSquare className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Allotment Verification</h3>
-                  <p className="text-[10px] text-slate-400 font-mono">Official Registrar Server Result</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-white">Check Allotment Status</h3>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-700/80 text-emerald-300 text-[10px] font-bold font-mono">
+                      100% ACCURATE
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Official registrar: <span className="text-slate-200 font-semibold">{regInfo.name}</span>
+                  </p>
                 </div>
               </div>
-              <button
-                onClick={() => setShowResultModal(false)}
-                className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
+
+              {/* Status pill */}
+              <div className="self-start sm:self-auto">
+                {life.isDeclared && !life.isDelisted ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-700/80 text-emerald-300 text-xs font-bold">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Allotment Declared ({life.daysRemaining}d left in list)</span>
+                  </span>
+                ) : !life.isDeclared ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-950/80 border border-amber-700/80 text-amber-300 text-xs font-bold">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Allotment Expected: {formatDate(ipo.allotmentDate)}</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-850 border border-slate-700 text-slate-400 text-xs font-bold">
+                    <span>Archived (&gt;15 Days)</span>
+                  </span>
+                )}
+              </div>
             </div>
 
-            {/* Result Status Body */}
-            {checkResult.success ? (
-              checkResult.data?.status === 'allotted' ? (
-                /* ALLOTTED SUCCESS STATE */
-                <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-gradient-to-b from-emerald-950/60 to-emerald-900/20 border border-emerald-600/50 text-center space-y-2 shadow-lg shadow-emerald-950/40">
-                    <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center mx-auto text-emerald-300">
-                      <PartyPopper className="w-6 h-6 animate-bounce" />
-                    </div>
-                    <div>
-                      <span className="text-[11px] font-bold text-emerald-400 tracking-wider uppercase">Congratulations!</span>
-                      <h4 className="text-xl font-black text-white mt-0.5">Shares Allotted</h4>
-                    </div>
-                    <div className="pt-2 flex justify-center items-baseline gap-2">
-                      <span className="text-3xl font-black text-emerald-300">{checkResult.data.shares}</span>
-                      <span className="text-xs text-slate-300 font-semibold">Equity Shares</span>
-                    </div>
-                    {ipo.gmpCurrent > 0 && (
-                      <p className="text-xs text-emerald-400 font-semibold pt-1">
-                        Est. Listing Profit: ~₹{(checkResult.data.shares * ipo.gmpCurrent).toLocaleString('en-IN')} (+{ipo.gmpPct}%)
-                      </p>
-                    )}
-                  </div>
+            {/* Official Registrar Direct Action Box */}
+            <div className="p-4 rounded-xl bg-slate-900/90 border border-indigo-500/30 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold block">
+                    Official Registrar Website
+                  </span>
+                  <span className="text-sm font-bold text-white">{regInfo.name}</span>
+                </div>
+                <RegistrarBadge registrar={ipo.registrar} />
+              </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block">Company</span>
-                      <span className="font-semibold text-white truncate block">{ipo.companyName}</span>
-                    </div>
-                    <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block">Category</span>
-                      <span className="font-semibold text-white">{checkResult.data.category || 'Retail'}</span>
-                    </div>
-                    <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block">Masked PAN</span>
-                      <span className="font-mono font-semibold text-slate-200">{checkResult.data.panMasked}</span>
-                    </div>
-                    <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block">Registrar</span>
-                      <span className="font-semibold text-indigo-300 truncate block">{ipo.registrar}</span>
-                    </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Direct authenticated server verification ensures 100% legal authenticity without false simulated results.
+              </p>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <a
+                  href={regInfo.portalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all shadow-md shadow-indigo-600/20"
+                >
+                  <span>Open {ipo.registrar} Official Portal</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+
+                {regInfo.server2Url && (
+                  <a
+                    href={regInfo.server2Url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-xs transition-all"
+                  >
+                    <span>Server 2 (Backup)</span>
+                    <ExternalLink className="w-3 h-3 text-slate-400" />
+                  </a>
+                )}
+
+                <a
+                  href={regInfo.bseUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-xs transition-all"
+                >
+                  <span>BSE Official Verification</span>
+                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                </a>
+              </div>
+            </div>
+
+            <form onSubmit={handleCheckAllotment} className="space-y-4 max-w-lg">
+              {pans.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1.5">Select Saved Family PAN</label>
+                  <select
+                    value={selectedPanId}
+                    onChange={(e) => {
+                      setSelectedPanId(e.target.value);
+                      setCustomPan('');
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-indigo-500 font-medium"
+                  >
+                    {pans.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label} (•••• {p.panMasked?.slice(-4) || 'PAN'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  {pans.length > 0 ? 'Or Enter Different PAN' : 'Enter PAN Number'}
+                </label>
+                <input
+                  type="text"
+                  maxLength={10}
+                  value={customPan}
+                  onChange={(e) => {
+                    setCustomPan(e.target.value.toUpperCase());
+                    setSelectedPanId('');
+                  }}
+                  placeholder="ABCDE1234F"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-sm uppercase focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={checkLoading || (!selectedPanId && customPan.length !== 10)}
+                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {checkLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Connecting to Registrar...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckSquare className="w-4 h-4" />
+                    <span>Verify Allotment Status with {ipo.registrar}</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        );
+      })()}
+
+      {/* ── ALLOTMENT RESULT POPUP MODAL ──────────────────────── */}
+      {showResultModal && checkResult && (() => {
+        const regInfo = getRegistrarPortalInfo(ipo.registrar);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="fixed inset-0 bg-black/75 backdrop-blur-sm animate-fade-in"
+              onClick={() => setShowResultModal(false)}
+            />
+            <div
+              className="relative z-10 w-full max-w-md bg-slate-950 border border-slate-700/80 rounded-3xl shadow-2xl shadow-black/80 animate-slide-up overflow-hidden p-6 space-y-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <CheckSquare className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Allotment Verification</h3>
+                    <p className="text-[10px] text-slate-400 font-mono">100% Official Registrar Portal</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowResultModal(false)}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Not Declared Yet State */}
+              {checkResult.isDeclared === false ? (
+                <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-800/60 text-center space-y-3">
+                  <Clock className="w-8 h-8 text-amber-400 mx-auto" />
+                  <div>
+                    <h4 className="font-bold text-white text-base">Allotment Not Declared Yet</h4>
+                    <p className="text-xs text-amber-200/90 mt-1 leading-relaxed">
+                      Allotment for <strong>{ipo.companyName}</strong> is scheduled for{' '}
+                      <strong>{formatDate(ipo.allotmentDate)}</strong>. The official registrar (
+                      {regInfo.name}) has not finalized the basis of allotment yet.
+                    </p>
                   </div>
                 </div>
               ) : (
-                /* NOT ALLOTTED STATE */
+                /* Declared / Official Verification State */
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 text-center space-y-2">
-                    <div className="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center mx-auto text-slate-400">
-                      <XCircle className="w-6 h-6 text-slate-400" />
+                  <div className="p-4 rounded-2xl bg-slate-900 border border-indigo-500/30 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white">{ipo.companyName}</span>
+                      <span className="text-[10px] font-mono text-indigo-300 font-bold">
+                        {checkResult.panMasked}
+                      </span>
                     </div>
-                    <h4 className="text-base font-bold text-white">No Shares Allotted</h4>
-                    <p className="text-xs text-slate-400">
-                      Due to high category over-subscription, your application was not selected in the registrar basis of allotment.
+
+                    <div className="text-xs text-slate-300 space-y-1 bg-slate-950 p-3 rounded-xl border border-slate-800">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Official Registrar:</span>
+                        <span className="font-semibold text-white">{regInfo.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Declaration Date:</span>
+                        <span className="font-semibold text-emerald-400">{formatDate(ipo.allotmentDate)}</span>
+                      </div>
+                      {checkResult.daysRemaining !== undefined && (
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Active Window:</span>
+                          <span className="font-semibold text-slate-200">{checkResult.daysRemaining} days remaining</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      To ensure 100% accurate results with your legal share entitlement, click below to open {regInfo.name}&apos;s verified allotment portal:
                     </p>
-                    <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800/80 text-[11px] text-slate-300 flex items-center justify-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Bank mandate unblock / refund will process automatically.</span>
+
+                    <div className="space-y-2 pt-1">
+                      <a
+                        href={regInfo.portalUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all shadow-md shadow-indigo-600/25 flex items-center justify-center gap-2"
+                      >
+                        <span>Open {ipo.registrar} Official Portal</span>
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+
+                      <a
+                        href={regInfo.bseUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-2.5 px-4 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-750 text-slate-200 font-semibold text-xs transition-all flex items-center justify-center gap-2"
+                      >
+                        <span>Verify on BSE Official Portal</span>
+                        <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                      </a>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block">Company</span>
-                      <span className="font-semibold text-white truncate block">{ipo.companyName}</span>
-                    </div>
-                    <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block">Registrar</span>
-                      <span className="font-semibold text-indigo-300 truncate block">{ipo.registrar}</span>
-                    </div>
+                  <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                    <span className="font-bold text-slate-300 block">Quick Steps on Registrar Portal:</span>
+                    <p>1. Select &quot;PAN&quot; option &amp; enter your PAN.</p>
+                    <p>2. Solve the simple 4-character captcha.</p>
+                    <p>3. View 100% authentic share allotment &amp; refund status directly from official records.</p>
                   </div>
                 </div>
-              )
-            ) : (
-              /* ERROR / EXTERNAL REGISTRAR NOTICE */
-              <div className="p-4 rounded-2xl bg-rose-950/30 border border-rose-800/50 space-y-2 text-xs text-slate-300">
-                <div className="flex items-center gap-2 text-rose-300 font-bold">
-                  <AlertCircle className="w-4 h-4" />
-                  <span>Unable to Complete Automatic Query</span>
-                </div>
-                <p className="text-slate-400">{checkResult.error || checkResult.message || 'Please check again later or visit registrar portal.'}</p>
+              )}
+
+              {/* Actions */}
+              <div className="pt-1">
+                <button
+                  onClick={() => setShowResultModal(false)}
+                  className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all"
+                >
+                  Close Window
+                </button>
               </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => setShowResultModal(false)}
-                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20"
-              >
-                Close Window
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
