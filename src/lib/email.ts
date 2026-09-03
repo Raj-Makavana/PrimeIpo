@@ -25,7 +25,7 @@ export async function sendEmailAlert({ to, subject, html }: SendEmailParams): Pr
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: process.env.EMAIL_FROM || 'PrimeIPO Alerts <alerts@primeipo.in>',
+          from: process.env.EMAIL_FROM || 'PrimeIPO <onboarding@resend.dev>',
           to: [to],
           subject,
           html,
