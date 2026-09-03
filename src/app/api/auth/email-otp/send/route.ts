@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       console.warn('DB email OTP insert warning:', dbErr);
     }
 
-    // Send real email via Resend
+    // Send real email via Gmail SMTP / Resend
     const result = await sendEmailAlert({
       to: email,
       subject: `Your PrimeIPO Verification Code: ${code}`,
@@ -52,7 +52,20 @@ export async function POST(req: NextRequest) {
       `,
     });
 
-    console.log(`[PrimeIPO] Email OTP dispatched to ${email}`);
+    if (!result.success) {
+      console.error(`[PrimeIPO] Failed to dispatch OTP email to ${email}:`, result.message);
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            result.message ||
+            'Unable to dispatch verification email. Please ensure GMAIL_USER and GMAIL_APP_PASSWORD are set in your deployment environment variables.',
+        },
+        { status: 500 }
+      );
+    }
+
+    console.log(`[PrimeIPO] Email OTP successfully dispatched to ${email} via ${result.provider}`);
 
     return NextResponse.json({
       success: true,

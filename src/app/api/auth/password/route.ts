@@ -191,7 +191,7 @@ export async function POST(req: NextRequest) {
       `;
 
       // Send branded password reset email via Gmail SMTP
-      await sendEmailAlert({
+      const sendResult = await sendEmailAlert({
         to: email,
         subject: `PrimeIPO Password Reset Code: ${resetCode}`,
         html: `
@@ -213,6 +213,18 @@ export async function POST(req: NextRequest) {
           </div>
         `,
       });
+
+      if (!sendResult.success) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              sendResult.message ||
+              'Unable to send password reset code. Please ensure GMAIL_USER and GMAIL_APP_PASSWORD are set in your environment variables.',
+          },
+          { status: 500 }
+        );
+      }
 
       return NextResponse.json({
         success: true,
