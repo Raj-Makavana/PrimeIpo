@@ -4,12 +4,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { auth, googleProvider } from '@/lib/firebase';
 import {
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   RecaptchaVerifier,
   signInWithPhoneNumber,
   ConfirmationResult,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
+
+// Detect mobile browser (popup blocked on mobile Safari/Chrome)
+const isMobileBrowser = () =>
+  typeof window !== 'undefined' &&
+  /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 import { X, LogIn, Phone, AlertCircle, RefreshCw, KeyRound, ShieldAlert, Sparkles, Mail } from 'lucide-react';
 
 interface AuthModalProps {
@@ -56,6 +63,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       if (timerRef.current) clearInterval(timerRef.current);
       clearRecaptcha();
     };
+  }, []);
+
+  // Handle Google redirect result on page load (for mobile redirect flow)
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          if (onSuccess) onSuccess(result.user);
+          onClose();
+        }
+      })
+      .catch((err) => {
+        if (err.code !== 'auth/no-current-user') {
+          console.error('Redirect result error:', err);
+        }
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const clearRecaptcha = () => {
@@ -201,12 +225,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     setError('');
     setFirebaseErrorHint(null);
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      if (onSuccess) onSuccess(result.user);
-      onClose();
+      if (isMobileBrowser()) {
+        // Mobile: use redirect (popup is blocked by mobile browsers)
+        await signInWithRedirect(auth, googleProvider);
+        // Page will redirect — no further code runs here
+      } else {
+        // Desktop: popup works fine
+        const result = await signInWithPopup(auth, googleProvider);
+        if (onSuccess) onSuccess(result.user);
+        onClose();
+      }
     } catch (err: any) {
       if (err.code === 'auth/popup-closed-by-user') {
         setError('Google sign-in was closed.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setError('This domain is not authorized. Add it in Firebase Console → Authentication → Settings → Authorized Domains.');
       } else {
         setError(err.message || 'Failed to sign in with Google');
       }
