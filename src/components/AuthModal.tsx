@@ -12,6 +12,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
+import { useAuth } from '@/lib/auth-context';
 
 // Detect mobile browser (popup blocked on mobile Safari/Chrome)
 const isMobileBrowser = () =>
@@ -26,6 +27,7 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
+  const { setCustomUser } = useAuth();
   const [method, setMethod] = useState<'choose' | 'phone' | 'email'>('choose');
   const [emailMode, setEmailMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [email, setEmail] = useState('');
@@ -324,8 +326,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         if (!res.ok || !data.success) {
           throw new Error(data.error || 'Invalid OTP code.');
         }
-        if (onSuccess) onSuccess(data.user);
-        onClose();
+        if (data.user) {
+          setCustomUser(data.user);
+          if (onSuccess) onSuccess(data.user);
+          onClose();
+        }
       }
     } catch (err: any) {
       if (err.code === 'auth/invalid-verification-code') {
@@ -353,10 +358,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         body: JSON.stringify({ phoneNumber: cleaned, otpCode: '123456' }),
       });
       const data = await res.json();
-      if (onSuccess) onSuccess(data.user);
-      onClose();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Instant sign in failed.');
+      }
+      if (data.user) {
+        setCustomUser(data.user);
+        if (onSuccess) onSuccess(data.user);
+        onClose();
+      }
     } catch (err: any) {
-      setError('Instant sign in failed.');
+      setError(err.message || 'Instant sign in failed.');
     } finally {
       setLoading(false);
     }
