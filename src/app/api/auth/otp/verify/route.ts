@@ -1,12 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebase-admin';
-
-declare global {
-  // eslint-disable-next-line no-var
-  var __OTP_STORE__: Map<string, { code: string; expiresAt: number }> | undefined;
-}
-
-const otpStore = global.__OTP_STORE__ || new Map();
+import { neon } from '@neondatabase/serverless';
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,47 +22,40 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check stored OTP code
-    const stored = otpStore.get(phoneKey);
     const isValidTestCode = code === '123456' || (phoneKey === '7201954380' && code === '201001');
-    const isStoredMatch = stored && stored.code === code && Date.now() <= stored.expiresAt;
+    let isDbMatch = false;
 
-    if (!isValidTestCode && !isStoredMatch) {
-      if (stored && Date.now() > stored.expiresAt) {
-        otpStore.delete(phoneKey);
-        return NextResponse.json(
-          { success: false, error: 'OTP has expired. Please request a new OTP code.' },
-          { status: 400 }
-        );
+    // Check NeonDB phone_otps table
+    try {
+      const sql = neon(process.env.DATABASE_URL || '');
+      const rows = await sql`
+        SELECT code, expires_at FROM phone_otps WHERE phone = ${phoneKey}
+      `;
+      if (rows.length > 0) {
+        const stored = rows[0];
+        if (stored.code === code && Date.now() <= Number(stored.expires_at)) {
+          isDbMatch = true;
+          // Delete consumed OTP
+          await sql`DELETE FROM phone_otps WHERE phone = ${phoneKey}`;
+        }
       }
+    } catch (dbErr) {
+      console.warn('DB OTP verify check warning:', dbErr);
+    }
+
+    if (!isValidTestCode && !isDbMatch) {
       return NextResponse.json(
         { success: false, error: 'Incorrect OTP code. Please enter the valid 6-digit code.' },
         { status: 400 }
       );
     }
 
-    // Clear consumed OTP
-    otpStore.delete(phoneKey);
-
     const uid = `phone_${phoneKey}`;
     const formattedPhone = `+91${phoneKey}`;
-
-    let customToken = '';
-    if (adminAuth) {
-      try {
-        customToken = await adminAuth.createCustomToken(uid, {
-          phoneNumber: formattedPhone,
-          phoneVerified: true,
-        });
-      } catch (err: any) {
-        console.error('Failed to create custom token with Firebase Admin:', err);
-      }
-    }
 
     return NextResponse.json({
       success: true,
       message: 'Mobile OTP verified successfully',
-      customToken,
       user: {
         uid,
         phoneNumber: formattedPhone,
@@ -83,3 +69,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

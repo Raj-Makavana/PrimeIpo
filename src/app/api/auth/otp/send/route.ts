@@ -1,16 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// In-memory OTP store with 5-minute expiry
-// In production, this can be synced to Redis or NeonDB
-declare global {
-  // eslint-disable-next-line no-var
-  var __OTP_STORE__: Map<string, { code: string; expiresAt: number }> | undefined;
-}
-
-if (!global.__OTP_STORE__) {
-  global.__OTP_STORE__ = new Map();
-}
-const otpStore = global.__OTP_STORE__;
+import { neon } from '@neondatabase/serverless';
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,9 +19,20 @@ export async function POST(req: NextRequest) {
     const generatedOtp = phoneKey === '7201954380' 
       ? '201001' 
       : Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-    otpStore.set(phoneKey, { code: generatedOtp, expiresAt });
+    // Save to NeonDB phone_otps table
+    try {
+      const sql = neon(process.env.DATABASE_URL || '');
+      await sql`
+        INSERT INTO phone_otps (phone, code, expires_at)
+        VALUES (${phoneKey}, ${generatedOtp}, ${expiresAt})
+        ON CONFLICT (phone) DO UPDATE 
+        SET code = ${generatedOtp}, expires_at = ${expiresAt}
+      `;
+    } catch (dbErr) {
+      console.warn('DB OTP insert warning:', dbErr);
+    }
 
     console.log(`[PrimeIPO OTP] Generated verification code for +91${phoneKey}: ${generatedOtp}`);
 
@@ -49,3 +49,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

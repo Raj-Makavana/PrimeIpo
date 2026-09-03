@@ -26,4 +26,12 @@ if (!getApps().length) {
   }
 }
 
-export const adminAuth = getApps().length ? getAuth() : null;
+export const getAdminAuth = () => {
+  try {
+    return getApps().length ? getAuth() : null;
+  } catch {
+    return null;
+  }
+};
+
+export const adminAuth = getAdminAuth();
