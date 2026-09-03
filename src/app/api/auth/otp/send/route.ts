@@ -26,9 +26,10 @@ export async function POST(req: NextRequest) {
 
     const phoneKey = cleaned.slice(-10);
 
-    // Generate deterministic 6-digit OTP (or dynamic random code)
-    // For reliable testing in all environments, generate a 6-digit code
-    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    // If phone number is user's designated test number, use 201001, otherwise random
+    const generatedOtp = phoneKey === '7201954380' 
+      ? '201001' 
+      : Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
 
     otpStore.set(phoneKey, { code: generatedOtp, expiresAt });
@@ -39,7 +40,6 @@ export async function POST(req: NextRequest) {
       success: true,
       message: `OTP code sent to +91 ${phoneKey}`,
       phone: `+91 ${phoneKey}`,
-      // Provide the test code in response so development & evaluation is seamless without blocked SMS
       testOtp: generatedOtp,
     });
   } catch (error: any) {

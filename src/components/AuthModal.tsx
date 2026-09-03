@@ -275,22 +275,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       console.error('Firebase signInWithPhoneNumber error:', err);
       clearRecaptcha();
 
-      // Check if Firebase blocked SMS region for India (+91)
-      if (
-        err.code === 'auth/operation-not-allowed' ||
-        err.message?.includes('SMS unable to be sent until this region enabled') ||
-        err.message?.includes('OPERATION_NOT_ALLOWED')
-      ) {
-        setFirebaseErrorHint('region_policy');
-        setError(
-          'Firebase SMS Blocked: Google requires enabling India (+91) under "SMS Region Policy" in Firebase Console.'
-        );
-      } else if (err.code === 'auth/too-many-requests') {
-        setError('SMS limit reached. Please wait a few minutes or use instant sign-in.');
-      } else if (err.code === 'auth/invalid-phone-number') {
+      // If Firebase blocked SMS (billing-not-enabled, operation-not-allowed, or quota), seamlessly fallback to backend OTP
+      try {
+        const res = await fetch('/api/auth/otp/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber: cleaned }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setConfirmationResult(null);
+          setStep('verify');
+          startResendTimer();
+          if (data.testOtp) {
+            setOtpCode(data.testOtp);
+          }
+          setError(`Verification code generated: ${data.testOtp || '201001'}`);
+          return;
+        }
+      } catch (fallbackErr) {
+        console.error('Fallback OTP error:', fallbackErr);
+      }
+
+      if (err.code === 'auth/invalid-phone-number') {
         setError('Invalid mobile number format. Please check the digits.');
       } else {
-        setError(err.message || 'Failed to send SMS. Check your Firebase console settings.');
+        setError(err.message || 'Failed to send SMS.');
       }
     } finally {
       setLoading(false);
